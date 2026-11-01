@@ -17,11 +17,16 @@ import { NotificationsScreen } from './screens/NotificationsScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { BottomNav, TabType } from './components/BottomNav';
 import { StoryViewerModal } from './components/StoryViewerModal';
+import { FullPostModal } from './components/FullPostModal';
 import { User } from './types';
 
 function MainApp() {
   const { isAuthenticated, needsProfileSetup, currentUser } = useAuth();
   const {
+    posts,
+    activePostId,
+    activePostList,
+    setActivePostId,
     activeStoryUserStories,
     activeStoryIndex,
     closeStoryViewer,
@@ -98,6 +103,7 @@ function MainApp() {
             <ProfileScreen
               userId={selectedUserId}
               onOpenMessagesWithUser={handleOpenMessagesWithUser}
+              onSelectUser={handleSelectUser}
             />
           </div>
         ) : (
@@ -123,6 +129,7 @@ function MainApp() {
               <ProfileScreen
                 userId={currentUser?.id}
                 onOpenSettings={() => setIsSettingsOpen(true)}
+                onSelectUser={handleSelectUser}
               />
             )}
           </>
@@ -145,6 +152,16 @@ function MainApp() {
           stories={activeStoryUserStories}
           initialIndex={activeStoryIndex}
           onClose={closeStoryViewer}
+        />
+      )}
+
+      {/* Full Post Modal (BUG 1: Route #/post/:postId support, refresh, and full post view) */}
+      {activePostId && (
+        <FullPostModal
+          postId={activePostId}
+          postList={activePostList.length > 0 ? activePostList : posts}
+          onClose={() => setActivePostId(null)}
+          onSelectUser={handleSelectUser}
         />
       )}
     </div>

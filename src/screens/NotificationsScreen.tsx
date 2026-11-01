@@ -27,6 +27,7 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
     acceptFollowRequest,
     rejectFollowRequest,
     followUser,
+    setActivePostId,
   } = useData();
 
   const [filterTab, setFilterTab] = useState<'all' | 'requests'>('all');
@@ -177,7 +178,9 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
                   <img
                     src={notif.targetPostThumbnail}
                     alt="Post"
-                    className="w-10 h-10 rounded-lg object-cover shrink-0 border border-zinc-800"
+                    onClick={() => notif.targetPostId && setActivePostId(notif.targetPostId)}
+                    className="w-10 h-10 rounded-lg object-cover shrink-0 border border-zinc-800 cursor-pointer hover:border-[#FACC15] hover:scale-105 transition-all"
+                    title="View post"
                   />
                 ) : notif.type === 'follow' && !isFollowingSender ? (
                   <button

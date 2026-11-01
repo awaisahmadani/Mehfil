@@ -81,14 +81,18 @@ export interface Message {
   createdAt: string;
   seen: boolean;
   isDeleted?: boolean;
+  deletedForEveryone?: boolean;
+  deletedFor?: string[]; // uids for whom this message is hidden locally
 }
 
 export interface Conversation {
-  id: string;
+  id: string; // sorted: uid1_uid2
   participantIds: string[];
   otherUser: User;
   lastMessage?: Message;
+  lastMessageTime?: string;
   unreadCount: number;
+  unreadCounts?: Record<string, number>;
   updatedAt: string;
   isRequest?: boolean;
 }
@@ -107,6 +111,16 @@ export interface NotificationItem {
   createdAt: string;
   read: boolean;
   requestStatus?: 'pending' | 'accepted' | 'rejected';
+}
+
+export interface FollowListItem {
+  id: string;
+  uid: string;
+  name: string;
+  username: string;
+  avatarUrl: string;
+  bio?: string;
+  isPrivate?: boolean;
 }
 
 export interface AuthState {

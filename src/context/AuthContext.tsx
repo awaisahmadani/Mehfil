@@ -41,6 +41,7 @@ interface AuthContextType {
     isPrivate: boolean;
   }) => Promise<void>;
   updateProfile: (updatedData: Partial<User>) => void;
+  updateUserById: (userId: string, updates: Partial<User>) => void;
   togglePrivacy: () => void;
   blockUser: (userId: string) => void;
   unblockUser: (userId: string) => void;
@@ -388,6 +389,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUsers(prev => prev.map(u => u.id === currentUser.id ? updated : u));
   };
 
+  const updateUserById = (userId: string, updates: Partial<User>) => {
+    setUsers(prev =>
+      prev.map(u => {
+        if (u.id === userId) {
+          const updated = { ...u, ...updates };
+          if (currentUser && currentUser.id === userId) {
+            setCurrentUser(updated);
+          }
+          return updated;
+        }
+        return u;
+      })
+    );
+  };
+
   const togglePrivacy = () => {
     if (!currentUser) return;
     updateProfile({ isPrivate: !currentUser.isPrivate });
@@ -448,6 +464,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         completePasswordReset,
         completeProfileSetup,
         updateProfile,
+        updateUserById,
         togglePrivacy,
         blockUser,
         unblockUser,

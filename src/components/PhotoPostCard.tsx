@@ -24,7 +24,7 @@ interface PhotoPostCardProps {
 
 export const PhotoPostCard: React.FC<PhotoPostCardProps> = ({ post, onSelectUser }) => {
   const { currentUser, blockUser } = useAuth();
-  const { toggleLikePost, toggleSavePost, addComment, deletePost } = useData();
+  const { toggleLikePost, toggleSavePost, addComment, deletePost, setActivePostId } = useData();
 
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
@@ -127,8 +127,15 @@ export const PhotoPostCard: React.FC<PhotoPostCardProps> = ({ post, onSelectUser
         </div>
       </div>
 
-      {/* Post Media (Photo) */}
-      <div className="relative aspect-square w-full bg-zinc-900 overflow-hidden cursor-pointer" onDoubleClick={handleDoubleTap}>
+      {/* Post Media (Photo) - click opens FullPostModal, double tap likes */}
+      <div
+        className="relative aspect-square w-full bg-zinc-900 overflow-hidden cursor-pointer"
+        onClick={() => setActivePostId(post.id)}
+        onDoubleClick={e => {
+          e.stopPropagation();
+          handleDoubleTap();
+        }}
+      >
         <img
           src={post.mediaUrl}
           alt={post.caption}

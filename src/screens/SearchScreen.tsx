@@ -11,7 +11,7 @@ interface SearchScreenProps {
 
 export const SearchScreen: React.FC<SearchScreenProps> = ({ onSelectUser }) => {
   const { users, currentUser } = useAuth();
-  const { posts, followUser, unfollowUser } = useData();
+  const { posts, followUser, unfollowUser, setActivePostId } = useData();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'accounts' | 'tags' | 'posts'>('all');
 
@@ -185,7 +185,8 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({ onSelectUser }) => {
             {filteredPosts.map(post => (
               <div
                 key={post.id}
-                className="relative aspect-square rounded-xl overflow-hidden bg-zinc-900 group cursor-pointer"
+                onClick={() => setActivePostId(post.id, filteredPosts)}
+                className="relative aspect-square rounded-xl overflow-hidden bg-zinc-900 group cursor-pointer hover:border hover:border-[#FACC15]/40 transition-colors"
               >
                 <img
                   src={post.thumbnailUrl || post.mediaUrl}

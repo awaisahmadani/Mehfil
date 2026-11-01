@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { User, Post } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
+import { FollowListModal } from '../components/FollowListModal';
 import {
   Grid,
   Video,
@@ -25,16 +26,23 @@ interface ProfileScreenProps {
   userId?: string; // If undefined, displays currentUser
   onOpenSettings?: () => void;
   onOpenMessagesWithUser?: (user: User) => void;
-  onSelectPost?: (postId: string) => void;
+  onSelectUser?: (userId: string) => void;
 }
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   userId,
   onOpenSettings,
   onOpenMessagesWithUser,
+  onSelectUser,
 }) => {
   const { currentUser, users, updateProfile, blockUser } = useAuth();
-  const { posts, followUser, unfollowUser, openOrCreateConversationWithUser } = useData();
+  const {
+    posts,
+    followUser,
+    unfollowUser,
+    openOrCreateConversationWithUser,
+    setActivePostId,
+  } = useData();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -60,6 +68,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [editAvatar, setEditAvatar] = useState(profileUser?.avatarUrl || '');
   const [copiedShare, setCopiedShare] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
+
+  // BUG 2: Follow list modal state
+  const [followModalTab, setFollowModalTab] = useState<'followers' | 'following' | null>(null);
 
   if (!profileUser) {
     return (
@@ -172,26 +183,43 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </div>
         </div>
 
-        {/* Stats Counts */}
-        <div className="flex-1 flex items-center justify-around text-center">
-          <div>
+        {/* Stats Counts (Clickable Followers & Following - BUG 2) */}
+        <div className="flex-1 flex items-center justify-around text-center select-none">
+          {/* Posts Count */}
+          <div className="px-2 py-1">
             <p className="font-extrabold text-base sm:text-lg text-white">
               {profileUser.postsCount || userPosts.length}
             </p>
             <p className="text-[11px] text-zinc-400">Posts</p>
           </div>
-          <div>
-            <p className="font-extrabold text-base sm:text-lg text-white">
+
+          {/* Followers Clickable Button */}
+          <button
+            type="button"
+            onClick={() => setFollowModalTab('followers')}
+            className="px-2 py-1 rounded-xl hover:bg-zinc-900 transition-colors text-center group cursor-pointer"
+          >
+            <p className="font-extrabold text-base sm:text-lg text-white group-hover:text-[#FACC15] transition-colors">
               {profileUser.followersCount}
             </p>
-            <p className="text-[11px] text-zinc-400">Followers</p>
-          </div>
-          <div>
-            <p className="font-extrabold text-base sm:text-lg text-white">
+            <p className="text-[11px] text-zinc-400 group-hover:text-zinc-200 transition-colors">
+              Followers
+            </p>
+          </button>
+
+          {/* Following Clickable Button */}
+          <button
+            type="button"
+            onClick={() => setFollowModalTab('following')}
+            className="px-2 py-1 rounded-xl hover:bg-zinc-900 transition-colors text-center group cursor-pointer"
+          >
+            <p className="font-extrabold text-base sm:text-lg text-white group-hover:text-[#FACC15] transition-colors">
               {profileUser.followingCount}
             </p>
-            <p className="text-[11px] text-zinc-400">Following</p>
-          </div>
+            <p className="text-[11px] text-zinc-400 group-hover:text-zinc-200 transition-colors">
+              Following
+            </p>
+          </button>
         </div>
       </div>
 
@@ -342,7 +370,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             )}
           </div>
 
-          {/* Posts Grid Display */}
+          {/* Posts Grid Display (BUG 1: Clickable to open full post) */}
           {activeTab === 'posts' && (
             <div className="grid grid-cols-3 gap-1.5">
               {userPosts.length === 0 ? (
@@ -353,7 +381,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 userPosts.map(post => (
                   <div
                     key={post.id}
-                    className="relative aspect-square bg-zinc-900 rounded-xl overflow-hidden group cursor-pointer"
+                    onClick={() => setActivePostId(post.id, userPosts)}
+                    className="relative aspect-square bg-zinc-900 rounded-xl overflow-hidden group cursor-pointer border border-zinc-800/40 hover:border-[#FACC15]/40 transition-colors"
                   >
                     <img
                       src={post.thumbnailUrl || post.mediaUrl}
@@ -365,13 +394,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                         <Play className="w-3 h-3 fill-white" />
                       </div>
                     )}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition-opacity">
+                      <span>{post.likesCount} ❤️</span>
+                    </div>
                   </div>
                 ))
               )}
             </div>
           )}
 
-          {/* Videos Tab */}
+          {/* Videos Tab (BUG 1: Clickable to open video reel) */}
           {activeTab === 'videos' && (
             <div className="grid grid-cols-3 gap-1.5">
               {userVideos.length === 0 ? (
@@ -382,7 +414,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 userVideos.map(post => (
                   <div
                     key={post.id}
-                    className="relative aspect-[9/16] bg-zinc-900 rounded-xl overflow-hidden group cursor-pointer"
+                    onClick={() => setActivePostId(post.id, userVideos)}
+                    className="relative aspect-[9/16] bg-zinc-900 rounded-xl overflow-hidden group cursor-pointer border border-zinc-800/40 hover:border-[#FACC15]/40 transition-colors"
                   >
                     <img
                       src={post.thumbnailUrl || post.mediaUrl}
@@ -399,7 +432,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </div>
           )}
 
-          {/* Saved Tab */}
+          {/* Saved Tab (BUG 1: Clickable to open saved post) */}
           {activeTab === 'saved' && isOwner && (
             <div className="grid grid-cols-3 gap-1.5">
               {savedPosts.length === 0 ? (
@@ -410,7 +443,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 savedPosts.map(post => (
                   <div
                     key={post.id}
-                    className="relative aspect-square bg-zinc-900 rounded-xl overflow-hidden group cursor-pointer"
+                    onClick={() => setActivePostId(post.id, savedPosts)}
+                    className="relative aspect-square bg-zinc-900 rounded-xl overflow-hidden group cursor-pointer border border-zinc-800/40 hover:border-[#FACC15]/40 transition-colors"
                   >
                     <img
                       src={post.thumbnailUrl || post.mediaUrl}
@@ -423,6 +457,19 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </div>
           )}
         </>
+      )}
+
+      {/* BUG 2: Followers / Following List Modal */}
+      {followModalTab && (
+        <FollowListModal
+          targetUser={profileUser}
+          initialTab={followModalTab}
+          onClose={() => setFollowModalTab(null)}
+          onSelectUser={uid => {
+            setFollowModalTab(null);
+            if (onSelectUser) onSelectUser(uid);
+          }}
+        />
       )}
 
       {/* EDIT PROFILE MODAL */}

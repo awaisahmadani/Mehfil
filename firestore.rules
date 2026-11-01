@@ -1,0 +1,138 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isParticipant(participantIds) {
+      return isSignedIn() && request.auth.uid in participantIds;
+    }
+
+    function isApprovedFollower(authorId) {
+      return isSignedIn() && (
+        request.auth.uid == authorId ||
+        exists(/databases/$(database)/documents/users/$(authorId)/followers/$(request.auth.uid))
+      );
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 1. Users collection
+    match /users/{userId} {
+      // Any authenticated user can read public profiles; private profiles only visible if approved follower or owner
+      allow read: if isSignedIn() && (
+        resource.data.isPrivate == false ||
+        isApprovedFollower(userId)
+      );
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+
+      // Followers subcollection: users/{userId}/followers/{followerId}
+      match /followers/{followerId} {
+        // Can read if profile is public, or if owner, or if approved follower
+        allow read: if isSignedIn() && (
+          get(/databases/$(database)/documents/users/$(userId)).data.isPrivate == false ||
+          isApprovedFollower(userId)
+        );
+        // User can remove a follower, or the follower can create/delete their own follow record
+        allow create, delete: if isOwner(followerId) || isOwner(userId);
+      }
+
+      // Following subcollection: users/{userId}/following/{followedId}
+      match /following/{followedId} {
+        allow read: if isSignedIn() && (
+          get(/databases/$(database)/documents/users/$(userId)).data.isPrivate == false ||
+          isApprovedFollower(userId)
+        );
+        allow create, delete: if isOwner(userId);
+      }
+    }
+
+    // 2. Posts collection
+    match /posts/{postId} {
+      // Read allowed if post is public, or author is viewer, or viewer is approved follower of private author
+      allow read: if isSignedIn() && (
+        resource.data.visibility == 'public' ||
+        resource.data.authorId == request.auth.uid ||
+        isApprovedFollower(resource.data.authorId)
+      );
+
+      // Create: author must be current user
+      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+
+      // Update: author can edit caption, visibility, or users can like/save atomically
+      allow update: if isSignedIn() && (
+        resource.data.authorId == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount', 'likedBy', 'savedBy', 'commentsCount', 'sharesCount'])
+      );
+
+      // Delete: only author
+      allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
+
+      // Comments subcollection
+      match /comments/{commentId} {
+        allow read: if isSignedIn() && (
+          get(/databases/$(database)/documents/posts/$(postId)).data.visibility == 'public' ||
+          isApprovedFollower(get(/databases/$(database)/documents/posts/$(postId)).data.authorId)
+        );
+        allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+        allow update, delete: if isSignedIn() && (
+          resource.data.authorId == request.auth.uid ||
+          get(/databases/$(database)/documents/posts/$(postId)).data.authorId == request.auth.uid
+        );
+      }
+    }
+
+    // 3. Chats and Messages
+    match /chats/{chatId} {
+      // Participants only can read or write
+      allow read: if isSignedIn() && isParticipant(resource.data.participantIds);
+      allow create: if isSignedIn() && isParticipant(request.resource.data.participantIds);
+      allow update: if isSignedIn() && isParticipant(resource.data.participantIds);
+      allow delete: if isSignedIn() && isParticipant(resource.data.participantIds);
+
+      // Messages subcollection
+      match /messages/{messageId} {
+        allow read: if isSignedIn() && isParticipant(get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds);
+        allow create: if isSignedIn() && 
+          isParticipant(get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds) &&
+          request.resource.data.senderId == request.auth.uid;
+        // Update/delete: sender can delete or participant can mark seen or delete for me
+        allow update, delete: if isSignedIn() &&
+          isParticipant(get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds);
+      }
+    }
+
+    // 4. Stories collection
+    match /stories/{storyId} {
+      allow read: if isSignedIn() && (
+        resource.data.authorId == request.auth.uid ||
+        isApprovedFollower(resource.data.authorId)
+      );
+      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        resource.data.authorId == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewedBy'])
+      );
+      allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
+    }
+
+    // 5. Notifications
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && resource.data.recipientId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.recipientId == request.auth.uid;
+    }
+  }
+}

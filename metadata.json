@@ -1,0 +1,6 @@
+{
+  "name": "Mehfil",
+  "description": "Apna andaz. Apni mehfil. TikTok + Instagram + Facebook style social media platform with video feeds, photo posts, stories, real-time messaging, and privacy controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
